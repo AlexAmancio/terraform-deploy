@@ -4,13 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Select the environment to deploy to'
+        description: "Select the environment to deploy to"
         required: true
-        default: 'Dev'
+        default: "Dev"
         type: choice
         options:
           - Dev
           - Prod
+      approved:
+        description: "Approve to apply Terraform"
+        required: false
+        default: "false"
+        type: boolean
 
 jobs:
   terraform_plan:
@@ -44,10 +49,10 @@ jobs:
       - name: Terraform Plan
         working-directory: ./environments/${{ steps.set-env.outputs.environment_name }}
         env:
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
         run: terraform plan
 
   wait_for_approval:
@@ -64,7 +69,6 @@ jobs:
               description: 'Approve to continue'
               required: true
               type: boolean
-        # Alternativamente: Usa un comentario o acción externa para aprobar el siguiente job
 
   terraform_apply:
     name: Terraform Apply
@@ -95,8 +99,8 @@ jobs:
       - name: Terraform Apply
         working-directory: ./environments/${{ env.ENVIRONMENT_NAME }}
         env:
-          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
+          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
+          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
+          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
         run: terraform apply -auto-approve
