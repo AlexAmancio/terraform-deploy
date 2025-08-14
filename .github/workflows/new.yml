@@ -11,10 +11,6 @@ on:
         options:
           - Dev
           - Prod
-      approved:
-        description: 'Approve to continue'
-        required: false
-        type: boolean
 
 jobs:
   terraform_plan:
@@ -31,13 +27,15 @@ jobs:
         id: set-env
         run: |
           if [ "${{ github.event.inputs.environment }}" = "Dev" ]; then
-            echo "::set-output name=environment_name::dev"
+            echo "environment_name=dev" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=environment_name::prod"
+            echo "environment_name=prod" >> $GITHUB_OUTPUT
           fi
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.11.3
 
       - name: Set Azure environment variables from AZURE_CREDENTIALS
         run: |
@@ -47,22 +45,12 @@ jobs:
           echo "ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId creds.json)" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
 
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.11.3
-
-      - name: Terraform Init (Local Backend)
+      - name: Terraform Init
         working-directory: ./environments/${{ steps.set-env.outputs.environment_name }}
         run: terraform init
 
       - name: Terraform Plan
         working-directory: ./environments/${{ steps.set-env.outputs.environment_name }}
-        env:
-          ARM_CLIENT_ID: ${{ env.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ env.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ env.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ env.ARM_TENANT_ID }}
         run: terraform plan
 
   wait_for_approval:
@@ -70,22 +58,21 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform_plan
     steps:
-      - name: Manual approval required
-        if: ${{ !github.event.inputs.approved }}
-        uses: peter-evans/workflow-dispatch@v1
+      - name: Wait for manual approval
+        uses: trstringer/manual-approval@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          inputs: |
-            approved:
-              description: 'Approve to continue'
-              required: true
-              type: boolean
+          secret: ${{ secrets.GITHUB_TOKEN }}
+          approvers: avalencia49021  # Reemplaza con tu GitHub username
+          minimum-approvals: 1
+          issue-title: "Terraform Apply Approval"
+          issue-body: "Please approve the Terraform apply step."
+          exclude-workflow-initiator-as-approver: false
 
   terraform_apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     needs: wait_for_approval
-    if: ${{ github.event.inputs.approved == 'true' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -98,8 +85,10 @@ jobs:
             echo "ENVIRONMENT_NAME=prod" >> $GITHUB_ENV
           fi
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.11.3
 
       - name: Set Azure environment variables from AZURE_CREDENTIALS
         run: |
@@ -109,20 +98,10 @@ jobs:
           echo "ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId creds.json)" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
 
-      - name: Install Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.11.3
-
-      - name: Terraform Init (Local Backend)
+      - name: Terraform Init
         working-directory: ./environments/${{ env.ENVIRONMENT_NAME }}
         run: terraform init
 
       - name: Terraform Apply
         working-directory: ./environments/${{ env.ENVIRONMENT_NAME }}
-        env:
-          ARM_CLIENT_ID: ${{ env.ARM_CLIENT_ID }}
-          ARM_CLIENT_SECRET: ${{ env.ARM_CLIENT_SECRET }}
-          ARM_SUBSCRIPTION_ID: ${{ env.ARM_SUBSCRIPTION_ID }}
-          ARM_TENANT_ID: ${{ env.ARM_TENANT_ID }}
         run: terraform apply -auto-approve
