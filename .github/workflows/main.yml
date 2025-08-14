@@ -12,9 +12,8 @@ on:
           - Dev
           - Prod
       approved:
-        description: "Approve to apply Terraform"
+        description: 'Approve to continue'
         required: false
-        default: "false"
         type: boolean
 
 jobs:
@@ -37,6 +36,17 @@ jobs:
             echo "::set-output name=environment_name::prod"
           fi
 
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Set Azure environment variables from AZURE_CREDENTIALS
+        run: |
+          echo "${{ secrets.AZURE_CREDENTIALS }}" > creds.json
+          echo "ARM_CLIENT_ID=$(jq -r .clientId creds.json)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(jq -r .clientSecret creds.json)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId creds.json)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
+
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -49,10 +59,10 @@ jobs:
       - name: Terraform Plan
         working-directory: ./environments/${{ steps.set-env.outputs.environment_name }}
         env:
-          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+          ARM_CLIENT_ID: ${{ env.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ env.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ env.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ env.ARM_TENANT_ID }}
         run: terraform plan
 
   wait_for_approval:
@@ -61,6 +71,7 @@ jobs:
     needs: terraform_plan
     steps:
       - name: Manual approval required
+        if: ${{ !github.event.inputs.approved }}
         uses: peter-evans/workflow-dispatch@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -87,6 +98,17 @@ jobs:
             echo "ENVIRONMENT_NAME=prod" >> $GITHUB_ENV
           fi
 
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Set Azure environment variables from AZURE_CREDENTIALS
+        run: |
+          echo "${{ secrets.AZURE_CREDENTIALS }}" > creds.json
+          echo "ARM_CLIENT_ID=$(jq -r .clientId creds.json)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(jq -r .clientSecret creds.json)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(jq -r .subscriptionId creds.json)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(jq -r .tenantId creds.json)" >> $GITHUB_ENV
+
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -99,8 +121,8 @@ jobs:
       - name: Terraform Apply
         working-directory: ./environments/${{ env.ENVIRONMENT_NAME }}
         env:
-          ARM_CLIENT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}
-          ARM_CLIENT_SECRET: ${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}
-          ARM_SUBSCRIPTION_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}
-          ARM_TENANT_ID: ${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}
+          ARM_CLIENT_ID: ${{ env.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ env.ARM_CLIENT_SECRET }}
+          ARM_SUBSCRIPTION_ID: ${{ env.ARM_SUBSCRIPTION_ID }}
+          ARM_TENANT_ID: ${{ env.ARM_TENANT_ID }}
         run: terraform apply -auto-approve
