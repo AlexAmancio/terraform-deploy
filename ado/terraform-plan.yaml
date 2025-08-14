@@ -1,0 +1,35 @@
+name: Auto Terraform Plan On Pull Request
+
+trigger: none
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  EnvironmentName: "dev"
+
+jobs:
+  - job: Terraform_Plan
+    displayName: Terraform Plan
+    timeoutInMinutes: 60
+
+    steps:
+      - checkout: self
+
+      - task: JasonBJohnson.azure-pipelines-tasks-terraform.azure-pipelines-tasks-terraform-installer.TerraformInstaller@0
+        inputs:
+          terraformVersion: "1.11.3"
+
+      # Usamos script para init con backend local
+      - script: terraform init
+        displayName: Terraform Init (Local Backend)
+        workingDirectory: "$(System.DefaultWorkingDirectory)/environments/${{ variables.EnvironmentName }}"
+
+      - task: TerraformTaskV4@4
+        displayName: Terraform Plan
+        inputs:
+          provider: "azurerm"
+          command: "plan"
+          workingDirectory: "$(System.DefaultWorkingDirectory)/environments/${{ variables.EnvironmentName }}"
+          environmentServiceNameAzureRM: "service-conn-test"
