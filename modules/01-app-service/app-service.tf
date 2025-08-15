@@ -1,5 +1,5 @@
 resource "azurerm_service_plan" "linux_free_plan" {
-  name                = "app-${local.naming_convention}-linux-free-plan"
+  name                = "app-${local.naming_convention}-linux-free-plansss"
   location            = var.region_zone
   resource_group_name = var.rg_name
 
@@ -16,7 +16,7 @@ resource "azurerm_service_plan" "linux_free_plan" {
 
 # Linux Web App GRATUITO con .NET 8
 resource "azurerm_linux_web_app" "linux_free_app" {
-  name                = "helloworld-${local.naming_convention}-app"
+  name                = "helloworld-${local.naming_convention}-appsss"
   location            = var.region_zone
   resource_group_name = var.rg_name
   service_plan_id     = azurerm_service_plan.linux_free_plan.id
