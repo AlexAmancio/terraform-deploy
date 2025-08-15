@@ -70,7 +70,7 @@ jobs:
         uses: trstringer/manual-approval@v1
         with:
           secret: ${{ secrets.GITHUB_TOKEN }}
-          approvers: avalencia49021
+          approvers: AlexAmancio
           minimum-approvals: 1
           issue-title: "Terraform Apply Approval"
           issue-body: "Please approve the Terraform apply step."
