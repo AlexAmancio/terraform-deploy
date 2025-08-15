@@ -12,6 +12,9 @@ on:
           - Dev
           - Prod
 
+permissions:
+  issues: write  # 👈 Necesario para que se puedan crear issues desde el workflow
+
 jobs:
   terraform_plan:
     name: Terraform Plan
