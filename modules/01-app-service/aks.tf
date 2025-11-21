@@ -1,5 +1,5 @@
 resource "azurerm_container_registry" "acr" {
-  name                = "${local.naming_convention}-acr"
+  name                = "${var.env}acr"
   resource_group_name = var.rg_name
   location            = var.region_zone
   sku                 = "Standard"
