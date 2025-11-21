@@ -11,7 +11,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   name                = "${local.naming_convention}-aks"
   location            = var.region_zone
   resource_group_name = var.rg_name
-  dns_prefix          = "${azurerm_kubernetes_cluster.aks.name}-dsdsdns"
+  dns_prefix          = "${local.naming_convention}-dns"
 
   identity {
     type = "SystemAssigned"
